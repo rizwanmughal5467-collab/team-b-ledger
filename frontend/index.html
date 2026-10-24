@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team B - Ledger & Inventory</title>
+  <style>
+    :root {
+      --bg: #0B1220; --surface: #111C31; --primary: #3B82F6;
+      --success: #10B981; --warning: #F59E0B; --danger: #F43F5E;
+      --text: #F8FAFC; --text-muted: #94A3B8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 20px; }
+    
+    .container { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 20px; color: var(--primary); }
+    h2 { font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #2A3A5A; padding-bottom: 10px; }
+
+    /* Summary Cards */
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+    .summary-card { background: var(--surface); padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .summary-card h3 { font-size: 14px; color: var(--text-muted); margin-bottom: 5px; }
+    .summary-card .value { font-size: 20px; font-weight: bold; }
+
+    .card { background: var(--surface); padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+    .form-group { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+    input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #2A3A5A; background: var(--bg); color: var(--text); }
+    button { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; color: white; }
+    
+    .btn-primary { background: var(--primary); }
+    .btn-danger { background: var(--danger); }
+    .btn-success { background: var(--success); }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #2A3A5A; }
+    th { color: var(--text-muted); font-size: 14px; }
+    
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .badge-ok { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+    .badge-low { background: rgba(244, 63, 94, 0.2); color: var(--danger); }
+    
+    #toast { position: fixed; bottom: 20px; right: 20px; padding: 15px; border-radius: 8px; color: white; display: none; z-index: 1000; font-weight: bold;}
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>📦 Ledger & Inventory Dashboard</h1>
+
+  <!-- Summary Cards (B8) -->
+  <div class="summary-grid">
+    <div class="summary-card">
+      <h3>Total Sales</h3>
+      <div class="value" style="color: var(--success);" id="totalSales">0</div>
+    </div>
+    <div class="summary-card">
+      <h3>Total Purchases</h3>
+      <div class="value" style="color: var(--primary);" id="totalPurchases">0</div>
+    </div>
+    <div class="summary-card">
+      <h3>Outstanding</h3>
+      <div class="value" style="color: var(--warning);" id="outstanding">0</div>
+    </div>
+    <div class="summary-card">
+      <h3>Low Stock Items</h3>
+      <div class="value" style="color: var(--danger);" id="lowStockCount">0</div>
+    </div>
+  </div>
+
+  <!-- Add Product Form (B5) -->
+  <div class="card">
+    <h2>Add New Product</h2>
+    <div class="form-group">
+      <input type="text" id="pName" placeholder="Product Name (e.g. HP Laptop)">
+      <input type="text" id="pSku" placeholder="SKU Code (e.g. HP-001)">
+      <input type="number" id="pPrice" placeholder="Price (e.g. 50000)">
+      <input type="number" id="pStock" placeholder="Initial Stock (e.g. 10)">
+      <button class="btn-primary" onclick="addProduct()">+ Add Product</button>
+    </div>
+  </div>
+
+  <!-- Products List (B5) -->
+  <div class="card">
+    <h2>Inventory Products</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Product Name</th>
+          <th>SKU</th>
+          <th>Price</th>
+          <th>Stock</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="productsTableBody">
+        <!-- JS will populate this -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast">Message</div>
+
+<script>
+  const API_URL = 'http://localhost:4001/api/ledger';
+  const TOKEN = prompt("Paste your JWT Token here:");
+
+  function showToast(msg, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.innerText = msg;
+    toast.style.background = type === 'success' ? '#10B981' : '#F43F5E';
+    toast.style.display = 'block';
+    setTimeout(() => toast.style.display = 'none', 3000);
+  }
+
+  // 1. Load Summary Data
+  async function loadSummary() {
+    try {
+      const res = await fetch(`${API_URL}/summary`, {
+        headers: { 'Authorization': `Bearer ${TOKEN}` }
+      });
+      const data = await res.json();
+      if (data.error) return showToast(data.error, 'error');
+
+      document.getElementById('totalSales').innerText = 'Rs ' + data.data.totalSales;
+      document.getElementById('totalPurchases').innerText = 'Rs ' + data.data.totalPurchases;
+      document.getElementById('outstanding').innerText = 'Rs ' + data.data.outstandingPayments;
+      document.getElementById('lowStockCount').innerText = data.data.lowStockCount;
+    } catch (error) {
+      showToast('Failed to load summary', 'error');
+    }
+  }
+
+  // 2. Load Products
+  async function loadProducts() {
+    try {
+      const res = await fetch(`${API_URL}/products`, {
+        headers: { 'Authorization': `Bearer ${TOKEN}` }
+      });
+      const data = await res.json();
+      if (data.error) return showToast(data.error, 'error');
+
+      const tbody = document.getElementById('productsTableBody');
+      tbody.innerHTML = '';
+
+      if (data.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5">No products found.</td></tr>';
+        return;
+      }
+
+      data.data.forEach(p => {
+        const stockClass = p.stock <= 10 ? 'badge-low' : 'badge-ok';
+        tbody.innerHTML += `
+          <tr>
+            <td><b>${p.name}</b></td>
+            <td>${p.sku}</td>
+            <td>Rs ${p.price}</td>
+            <td><span class="badge ${stockClass}">${p.stock} in stock</span></td>
+            <td>
+              <button class="btn-danger" onclick="deleteProduct('${p.id}')">Delete</button>
+            </td>
+          </tr>
+        `;
+      });
+    } catch (error) {
+      showToast('Failed to load products', 'error');
+    }
+  }
+
+  // 3. Add Product
+  async function addProduct() {
+    const name = document.getElementById('pName').value;
+    const sku = document.getElementById('pSku').value;
+    const price = document.getElementById('pPrice').value;
+    const stock = document.getElementById('pStock').value;
+
+    if (!name || !sku) return showToast('Name and SKU required!', 'error');
+
+    try {
+      const res = await fetch(`${API_URL}/products`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${TOKEN}` 
+        },
+        body: JSON.stringify({ name, sku, price: Number(price), stock: Number(stock) })
+      });
+      const data = await res.json();
+      
+      if (data.error) return showToast(data.error, 'error');
+      
+      showToast('Product added!');
+      document.getElementById('pName').value = '';
+      document.getElementById('pSku').value = '';
+      document.getElementById('pPrice').value = '';
+      document.getElementById('pStock').value = '';
+      loadProducts();
+      loadSummary();
+    } catch (error) {
+      showToast('Failed to add product', 'error');
+    }
+  }
+
+  // 4. Delete Product
+  async function deleteProduct(id) {
+    if(!confirm('Delete this product?')) return;
+    try {
+      await fetch(`${API_URL}/products/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${TOKEN}` }
+      });
+      showToast('Product deleted!');
+      loadProducts();
+      loadSummary();
+    } catch (error) {
+      showToast('Failed to delete', 'error');
+    }
+  }
+
+  // Initialize
+  window.onload = () => {
+    if (TOKEN) {
+      loadSummary();
+      loadProducts();
+    }
+  };
+</script>
+</body>
+</html>

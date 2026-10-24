@@ -104,7 +104,7 @@
 
 <script>
   const API_URL = 'http://localhost:4001/api/ledger';
-  const TOKEN = prompt("Paste your JWT Token here:");
+  const TOKEN = localStorage.getItem('jwtToken');
 
   function showToast(msg, type = 'success') {
     const toast = document.getElementById('toast');

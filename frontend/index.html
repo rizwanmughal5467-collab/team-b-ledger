@@ -17,20 +17,20 @@
     h1 { font-size: 24px; margin-bottom: 20px; color: var(--primary); }
     h2 { font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #2A3A5A; padding-bottom: 10px; }
 
-    /* Summary Cards */
     .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-    .summary-card { background: var(--surface); padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .summary-card { background: var(--surface); padding: 15px; border-radius: 10px; text-align: center; }
     .summary-card h3 { font-size: 14px; color: var(--text-muted); margin-bottom: 5px; }
     .summary-card .value { font-size: 20px; font-weight: bold; }
 
     .card { background: var(--surface); padding: 20px; border-radius: 12px; margin-bottom: 20px; }
     .form-group { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
-    input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #2A3A5A; background: var(--bg); color: var(--text); }
+    input, select { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #2A3A5A; background: var(--bg); color: var(--text); outline: none;}
     button { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; color: white; }
     
     .btn-primary { background: var(--primary); }
-    .btn-danger { background: var(--danger); }
     .btn-success { background: var(--success); }
+    .btn-danger { background: var(--danger); }
+    .btn-warning { background: var(--warning); color: #000; }
     
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid #2A3A5A; }
@@ -39,8 +39,8 @@
     .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .badge-ok { background: rgba(16, 185, 129, 0.2); color: var(--success); }
     .badge-low { background: rgba(244, 63, 94, 0.2); color: var(--danger); }
-    
-    #toast { position: fixed; bottom: 20px; right: 20px; padding: 15px; border-radius: 8px; color: white; display: none; z-index: 1000; font-weight: bold;}
+    .badge-paid { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+    .badge-pending { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
   </style>
 </head>
 <body>
@@ -48,106 +48,87 @@
 <div class="container">
   <h1>📦 Ledger & Inventory Dashboard</h1>
 
-  <!-- Summary Cards (B8) -->
   <div class="summary-grid">
-    <div class="summary-card">
-      <h3>Total Sales</h3>
-      <div class="value" style="color: var(--success);" id="totalSales">0</div>
-    </div>
-    <div class="summary-card">
-      <h3>Total Purchases</h3>
-      <div class="value" style="color: var(--primary);" id="totalPurchases">0</div>
-    </div>
-    <div class="summary-card">
-      <h3>Outstanding</h3>
-      <div class="value" style="color: var(--warning);" id="outstanding">0</div>
-    </div>
-    <div class="summary-card">
-      <h3>Low Stock Items</h3>
-      <div class="value" style="color: var(--danger);" id="lowStockCount">0</div>
-    </div>
+    <div class="summary-card"><h3>Total Sales</h3><div class="value" style="color: var(--success);" id="totalSales">Rs 0</div></div>
+    <div class="summary-card"><h3>Total Purchases</h3><div class="value" style="color: var(--primary);" id="totalPurchases">Rs 0</div></div>
+    <div class="summary-card"><h3>Outstanding</h3><div class="value" style="color: var(--warning);" id="outstanding">Rs 0</div></div>
+    <div class="summary-card"><h3>Low Stock Items</h3><div class="value" style="color: var(--danger);" id="lowStockCount">0</div></div>
   </div>
 
-  <!-- Add Product Form (B5) -->
+  <!-- Add Product Form -->
   <div class="card">
     <h2>Add New Product</h2>
     <div class="form-group">
-      <input type="text" id="pName" placeholder="Product Name (e.g. HP Laptop)">
-      <input type="text" id="pSku" placeholder="SKU Code (e.g. HP-001)">
-      <input type="number" id="pPrice" placeholder="Price (e.g. 50000)">
-      <input type="number" id="pStock" placeholder="Initial Stock (e.g. 10)">
+      <input type="text" id="pName" placeholder="Product Name">
+      <input type="text" id="pSku" placeholder="SKU Code">
+      <input type="number" id="pCostPrice" placeholder="Cost Price (e.g. 2000)">
+      <input type="number" id="pSellingPrice" placeholder="Selling Price (e.g. 2500)">
+      <input type="number" id="pStock" placeholder="Initial Stock">
+      <input type="text" id="pImage" placeholder="Image URL">
       <button class="btn-primary" onclick="addProduct()">+ Add Product</button>
     </div>
   </div>
 
-  <!-- Products List (B5) -->
+  <!-- Purchase Stock Form -->
+  <div class="card">
+    <h2>Purchase Stock (Kharidari)</h2>
+    <div class="form-group">
+      <select id="purchaseProduct"><option value="">Select Product...</option></select>
+      <input type="number" id="purchaseQty" placeholder="Quantity">
+      <input type="text" id="purchaseSupplier" placeholder="Supplier Name">
+      <button class="btn-success" onclick="recordPurchase()">+ Add Purchase</button>
+    </div>
+  </div>
+
+  <!-- Products List -->
   <div class="card">
     <h2>Inventory Products</h2>
     <table>
-      <thead>
-        <tr>
-          <th>Product Name</th>
-          <th>SKU</th>
-          <th>Price</th>
-          <th>Stock</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="productsTableBody">
-        <!-- JS will populate this -->
-      </tbody>
+      <thead><tr><th>Name</th><th>SKU</th><th>Cost Price</th><th>Selling Price</th><th>Stock</th><th>Actions</th></tr></thead>
+      <tbody id="productsBody"></tbody>
     </table>
   </div>
-</div>
 
-<div id="toast">Message</div>
+  <!-- Sales List -->
+  <div class="card">
+    <h2>Recent Orders (Sales)</h2>
+    <table>
+      <thead><tr><th>Order ID</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+      <tbody id="salesBody"></tbody>
+    </table>
+  </div>
+
+</div>
 
 <script>
   const API_URL = 'http://localhost:4001/api/ledger';
-  const TOKEN = localStorage.getItem('jwtToken');
+  const TOKEN = localStorage.getItem('jwtToken') || prompt("Paste your JWT Token here:");
 
   function showToast(msg, type = 'success') {
-    const toast = document.getElementById('toast');
-    toast.innerText = msg;
-    toast.style.background = type === 'success' ? '#10B981' : '#F43F5E';
-    toast.style.display = 'block';
-    setTimeout(() => toast.style.display = 'none', 3000);
+    alert(msg); // Simple alert for now
   }
 
-  // 1. Load Summary Data
   async function loadSummary() {
     try {
-      const res = await fetch(`${API_URL}/summary`, {
-        headers: { 'Authorization': `Bearer ${TOKEN}` }
-      });
+      const res = await fetch(`${API_URL}/summary`, { headers: { 'Authorization': `Bearer ${TOKEN}` } });
       const data = await res.json();
-      if (data.error) return showToast(data.error, 'error');
-
+      if (data.error) return;
       document.getElementById('totalSales').innerText = 'Rs ' + data.data.totalSales;
       document.getElementById('totalPurchases').innerText = 'Rs ' + data.data.totalPurchases;
       document.getElementById('outstanding').innerText = 'Rs ' + data.data.outstandingPayments;
       document.getElementById('lowStockCount').innerText = data.data.lowStockCount;
-    } catch (error) {
-      showToast('Failed to load summary', 'error');
-    }
+    } catch (error) { console.log(error); }
   }
 
-  // 2. Load Products
   async function loadProducts() {
     try {
-      const res = await fetch(`${API_URL}/products`, {
-        headers: { 'Authorization': `Bearer ${TOKEN}` }
-      });
+      const res = await fetch(`${API_URL}/products`, { headers: { 'Authorization': `Bearer ${TOKEN}` } });
       const data = await res.json();
       if (data.error) return showToast(data.error, 'error');
 
-      const tbody = document.getElementById('productsTableBody');
-      tbody.innerHTML = '';
-
-      if (data.data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5">No products found.</td></tr>';
-        return;
-      }
+      const tbody = document.getElementById('productsBody');
+      const dropdown = document.getElementById('purchaseProduct');
+      tbody.innerHTML = ''; dropdown.innerHTML = '<option value="">Select Product...</option>';
 
       data.data.forEach(p => {
         const stockClass = p.stock <= 10 ? 'badge-low' : 'badge-ok';
@@ -155,75 +136,118 @@
           <tr>
             <td><b>${p.name}</b></td>
             <td>${p.sku}</td>
-            <td>Rs ${p.price}</td>
+            <td>Rs ${p.costPrice || 0}</td>
+            <td>Rs ${p.sellingPrice || 0}</td>
             <td><span class="badge ${stockClass}">${p.stock} in stock</span></td>
-            <td>
-              <button class="btn-danger" onclick="deleteProduct('${p.id}')">Delete</button>
-            </td>
+            <td><button class="btn-danger" onclick="deleteProduct('${p.id}')">Delete</button></td>
+          </tr>
+        `;
+        dropdown.innerHTML += `<option value="${p.id}">${p.name} (Stock: ${p.stock})</option>`;
+      });
+    } catch (error) { showToast('Failed to load products', 'error'); }
+  }
+
+  async function loadSales() {
+    try {
+      const res = await fetch(`${API_URL}/sales`, { headers: { 'Authorization': `Bearer ${TOKEN}` } });
+      const data = await res.json();
+      if (data.error) return;
+
+      const tbody = document.getElementById('salesBody');
+      tbody.innerHTML = '';
+      
+      data.data.forEach(sale => {
+        const isPaid = sale.paymentStatus === 'paid';
+        const badge = isPaid ? '<span class="badge badge-paid">Paid</span>' : '<span class="badge badge-pending">Pending</span>';
+        const actionBtn = isPaid 
+          ? `<button class="btn-warning" style="padding: 5px 10px; font-size:12px;" onclick="updateStatus('${sale.id}', 'pending')">Mark Unpaid</button>`
+          : `<button class="btn-primary" style="padding: 5px 10px; font-size:12px;" onclick="updateStatus('${sale.id}', 'paid')">Mark Paid</button>`;
+
+        tbody.innerHTML += `
+          <tr>
+            <td>${sale.id.substring(0,6)}...</td>
+            <td>Rs ${sale.totalAmount}</td>
+            <td>${badge}</td>
+            <td>${actionBtn}</td>
           </tr>
         `;
       });
-    } catch (error) {
-      showToast('Failed to load products', 'error');
-    }
+    } catch (error) { console.log(error); }
   }
 
-  // 3. Add Product
   async function addProduct() {
     const name = document.getElementById('pName').value;
     const sku = document.getElementById('pSku').value;
-    const price = document.getElementById('pPrice').value;
+    const costPrice = document.getElementById('pCostPrice').value;
+    const sellingPrice = document.getElementById('pSellingPrice').value;
     const stock = document.getElementById('pStock').value;
+    const imageUrl = document.getElementById('pImage').value;
 
     if (!name || !sku) return showToast('Name and SKU required!', 'error');
 
     try {
       const res = await fetch(`${API_URL}/products`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${TOKEN}` 
-        },
-        body: JSON.stringify({ name, sku, price: Number(price), stock: Number(stock) })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
+        body: JSON.stringify({ name, sku, costPrice: Number(costPrice), sellingPrice: Number(sellingPrice), stock: Number(stock), imageUrl })
       });
       const data = await res.json();
-      
       if (data.error) return showToast(data.error, 'error');
       
       showToast('Product added!');
-      document.getElementById('pName').value = '';
-      document.getElementById('pSku').value = '';
-      document.getElementById('pPrice').value = '';
-      document.getElementById('pStock').value = '';
-      loadProducts();
-      loadSummary();
-    } catch (error) {
-      showToast('Failed to add product', 'error');
-    }
+      document.querySelectorAll('input').forEach(input => input.value = '');
+      loadProducts(); loadSummary();
+    } catch (error) { showToast('Failed to add product', 'error'); }
   }
 
-  // 4. Delete Product
+  async function recordPurchase() {
+    const productId = document.getElementById('purchaseProduct').value;
+    const qty = document.getElementById('purchaseQty').value;
+    const supplier = document.getElementById('purchaseSupplier').value;
+
+    if (!productId || !qty || qty <= 0) return showToast("Select product and valid quantity!", 'error');
+
+    try {
+      const res = await fetch(`${API_URL}/purchases`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
+        body: JSON.stringify({ productId, qty: Number(qty), supplier })
+      });
+      const data = await res.json();
+      if (data.error) return showToast(data.error, 'error');
+      
+      showToast(`Purchase Successful! Stock updated.`);
+      document.getElementById('purchaseQty').value = '';
+      document.getElementById('purchaseSupplier').value = '';
+      loadProducts(); loadSummary();
+    } catch (error) { showToast("Failed to record purchase.", 'error'); }
+  }
+
+  async function updateStatus(id, newStatus) {
+    try {
+      const res = await fetch(`${API_URL}/sales/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if(res.ok) {
+        showToast(`Order marked as ${newStatus.toUpperCase()}!`);
+        loadSales(); loadSummary();
+      }
+    } catch (error) { showToast("Failed to update status", 'error'); }
+  }
+
   async function deleteProduct(id) {
     if(!confirm('Delete this product?')) return;
     try {
-      await fetch(`${API_URL}/products/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${TOKEN}` }
-      });
+      await fetch(`${API_URL}/products/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${TOKEN}` } });
       showToast('Product deleted!');
-      loadProducts();
-      loadSummary();
-    } catch (error) {
-      showToast('Failed to delete', 'error');
-    }
+      loadProducts(); loadSummary();
+    } catch (error) { showToast('Failed to delete', 'error'); }
   }
 
-  // Initialize
   window.onload = () => {
-    if (TOKEN) {
-      loadSummary();
-      loadProducts();
-    }
+    if (TOKEN) { loadSummary(); loadProducts(); loadSales(); }
   };
 </script>
 </body>

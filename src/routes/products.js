@@ -1,36 +1,47 @@
 const express = require('express');
 const router = express.Router();
 const authGuard = require('../middleware/auth');
-const { db } = require('../firebase'); // Firebase import kiya
+const { db } = require('../firebase');
 
-// 1. GET: Saare products Firebase se laao
-router.get('/', authGuard, async (req, res) => {
+// PUBLIC ROUTE
+router.get('/public', async (req, res) => {
   try {
-    const snapshot = await db.collection('ledgerProducts')
-                           .where('orgId', '==', req.user.orgId)
-                           .get();
-    
+    const snapshot = await db.collection('ledgerProducts').get();
     const products = [];
     snapshot.forEach(doc => {
       products.push({ id: doc.id, ...doc.data() });
     });
-
     res.json({ message: "Success", data: products });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// 2. POST: Naya product Firebase mein save karo
+// GET: Saare products
+router.get('/', authGuard, async (req, res) => {
+  try {
+    const snapshot = await db.collection('ledgerProducts')
+                           .where('orgId', '==', req.user.orgId)
+                           .get();
+    const products = [];
+    snapshot.forEach(doc => {
+      products.push({ id: doc.id, ...doc.data() });
+    });
+    res.json({ message: "Success", data: products });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST: Naya Product
 router.post('/', authGuard, async (req, res) => {
-  const { name, sku, price, stock } = req.body;
+  const { name, sku, costPrice, sellingPrice, stock, imageUrl } = req.body;
   
   if (!name || !sku) {
     return res.status(400).json({ error: "Name aur SKU likhna zaroori hai!" });
   }
 
   try {
-    // SKU validation: Check karo ke yeh SKU pehle se exist toh nahi karta
     const existingSku = await db.collection('ledgerProducts')
                               .where('orgId', '==', req.user.orgId)
                               .where('sku', '==', sku)
@@ -44,57 +55,26 @@ router.post('/', authGuard, async (req, res) => {
       orgId: req.user.orgId,
       name: name,
       sku: sku,
-      price: price || 0,
-      stock: stock || 0,
+      costPrice: Number(costPrice) || 0,       // Khareedne ka rate
+      sellingPrice: Number(sellingPrice) || 0, // Bechne ka rate
+      price: Number(sellingPrice) || 0,        // Customer store ke liye
+      stock: Number(stock) || 0,
+      imageUrl: imageUrl || '',
       createdAt: new Date().toISOString()
     };
 
     const docRef = await db.collection('ledgerProducts').add(newProduct);
-    
-    res.status(201).json({ 
-      message: "Product Added to Database!", 
-      data: { id: docRef.id, ...newProduct } 
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-// 3. PUT: Product ko update karo (Price ya Stock change karna)
-router.put('/:id', authGuard, async (req, res) => {
-  const { name, price, stock } = req.body;
-  try {
-    const productRef = db.collection('ledgerProducts').doc(req.params.id);
-    const doc = await productRef.get();
-
-    if (!doc.exists || doc.data().orgId !== req.user.orgId) {
-      return res.status(404).json({ error: "Product nahi mila" });
-    }
-
-    const updateData = {};
-    if (name) updateData.name = name;
-    if (price !== undefined) updateData.price = price;
-    if (stock !== undefined) updateData.stock = stock;
-    updateData.updatedAt = new Date().toISOString();
-
-    await productRef.update(updateData);
-    res.json({ message: "Product Updated!", data: updateData });
+    res.status(201).json({ message: "Product Added!", data: { id: docRef.id, ...newProduct } });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// 4. DELETE: Product ko delete karo
+// DELETE
 router.delete('/:id', authGuard, async (req, res) => {
   try {
-    const productRef = db.collection('ledgerProducts').doc(req.params.id);
-    const doc = await productRef.get();
-
-    if (!doc.exists || doc.data().orgId !== req.user.orgId) {
-      return res.status(404).json({ error: "Product nahi mila" });
-    }
-
-    await productRef.delete();
-    res.json({ message: "Product Deleted from Database" });
+    await db.collection('ledgerProducts').doc(req.params.id).delete();
+    res.json({ message: "Product Deleted" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
